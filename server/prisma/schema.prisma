@@ -1,13 +1,275 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// ===============================
+// Prisma Generator
+// ===============================
 
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
 }
 
+// ===============================
+// Database
+// ===============================
+
 datasource db {
   provider = "postgresql"
 }
+
+// ===============================
+// Enums
+// ===============================
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum ProductCondition {
+  NEW
+  LIKE_NEW
+  GOOD
+  FAIR
+}
+
+enum ProductStatus {
+  AVAILABLE
+  SOLD
+  EXPIRED
+}
+
+enum OtpPurpose {
+  REGISTRATION
+  PASSWORD_RESET
+}
+
+// ===============================
+// Program
+// ===============================
+
+model Program {
+  id           String   @id @default(uuid()) @db.Uuid @map("program_id")
+  programName  String   @unique @db.VarChar(100) @map("program_name")
+  displayOrder Int      @default(1) @map("display_order")
+  isActive     Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users User[]
+
+  @@index([displayOrder])
+  @@index([isActive])
+
+  @@map("programs")
+}
+
+// ===============================
+// Category
+// ===============================
+
+model Category {
+  id            String   @id @default(uuid()) @db.Uuid @map("category_id")
+  categoryName  String   @unique @db.VarChar(100) @map("category_name")
+  categoryIcon  String?  @db.VarChar(100) @map("category_icon")
+  displayOrder  Int      @default(1) @map("display_order")
+  isActive      Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  subcategories SubCategory[]
+
+  @@index([displayOrder])
+  @@index([isActive])
+
+  @@map("categories")
+}
+
+// ===============================
+// SubCategory
+// ===============================
+
+model SubCategory {
+  id               String  @id @default(uuid()) @db.Uuid @map("subcategory_id")
+
+  categoryId       String  @db.Uuid @map("category_id")
+
+  subcategoryName  String  @db.VarChar(100) @map("subcategory_name")
+
+  displayOrder     Int     @default(1) @map("display_order")
+
+  isActive         Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  category Category @relation(fields: [categoryId], references: [id])
+
+  products Product[]
+
+  @@unique([categoryId, subcategoryName])
+
+  @@index([displayOrder])
+  @@index([isActive])
+
+  @@map("subcategories")
+}
+
+// ===============================
+// User
+// ===============================
+
+model User {
+  id               String   @id @default(uuid()) @db.Uuid @map("user_id")
+
+  bitEmail         String   @unique @db.VarChar(255) @map("bit_email")
+
+  passwordHash     String   @map("password_hash")
+
+  fullName         String   @db.VarChar(120) @map("full_name")
+
+  role             UserRole @default(USER)
+
+  programId        String   @db.Uuid @map("program_id")
+
+  academicYear     Int      @map("academic_year")
+
+  whatsappNumber   String   @db.VarChar(15) @map("whatsapp_number")
+
+  hostel           String?  @db.VarChar(100)
+
+  profilePhotoUrl  String?  @map("profile_photo_url")
+
+  emailVerified    Boolean  @default(false) @map("email_verified")
+
+  isActive         Boolean  @default(true) @map("is_active")
+
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  program Program @relation(fields: [programId], references: [id])
+
+  products Product[]
+
+  otpVerifications OTPVerification[]
+
+  @@index([programId])
+  @@index([role])
+  @@index([isActive])
+
+  @@map("users")
+}
+
+// ===============================
+// OTP Verification
+// ===============================
+
+model OTPVerification {
+
+  id String @id @default(uuid()) @db.Uuid @map("otp_id")
+
+  userId String @db.Uuid @map("user_id")
+
+  otpHash String @map("otp_hash")
+
+  purpose OtpPurpose
+
+  expiresAt DateTime @map("expires_at")
+
+  isUsed Boolean @default(false) @map("is_used")
+
+  resendCount Int @default(0) @map("resend_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([purpose])
+  @@index([expiresAt])
+  @@index([isUsed])
+
+  @@map("otp_verifications")
+}
+
+// ===============================
+// Product
+// ===============================
+
+model Product {
+
+  id String @id @default(uuid()) @db.Uuid @map("product_id")
+
+  listingNumber BigInt @unique @map("listing_number")
+
+  sellerId String @db.Uuid @map("seller_id")
+
+  subcategoryId String @db.Uuid @map("subcategory_id")
+
+  title String @db.VarChar(150)
+
+  description String
+
+  price Decimal @db.Decimal(10,2)
+
+  condition ProductCondition
+
+  purchaseYear Int? @map("purchase_year")
+
+  reasonForSelling String? @map("reason_for_selling")
+
+  negotiable Boolean @default(false)
+
+  status ProductStatus @default(AVAILABLE)
+
+  expiresAt DateTime @map("expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  deletedAt DateTime? @map("deleted_at")
+
+  seller User @relation(fields: [sellerId], references: [id])
+
+  subcategory SubCategory @relation(fields: [subcategoryId], references: [id])
+
+  images ProductImage[]
+
+  @@index([sellerId])
+  @@index([subcategoryId])
+  @@index([status])
+  @@index([price])
+  @@index([createdAt])
+  @@index([deletedAt])
+
+  @@map("products")
+}
+
+// ===============================
+// Product Image
+// ===============================
+
+model ProductImage {
+
+  id String @id @default(uuid()) @db.Uuid @map("image_id")
+
+  productId String @db.Uuid @map("product_id")
+
+  imageUrl String @map("image_url")
+
+  displayOrder Int @map("display_order")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, displayOrder])
+
+  @@index([productId])
+  @@index([displayOrder])
+
+  @@map("product_images")
+}
+
